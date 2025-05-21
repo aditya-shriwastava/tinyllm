@@ -1,6 +1,9 @@
 # Virtual Environment
 .venv/
 
+# Experiment runs and checkpoints
+runs/
+
 # Editors
 .vscode/
 .idea/
