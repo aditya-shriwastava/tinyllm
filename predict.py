@@ -36,8 +36,8 @@ def main():
 
     # Model params (ensure these match training)
     block_size = 256
-    embedding_size = 64
-    head_size = 16
+    embedding_size = 384
+    num_heads = 6
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load model
@@ -45,7 +45,7 @@ def main():
         vocab_size=len(tokenizer),
         block_size=block_size,
         embedding_size=embedding_size,
-        head_size=head_size
+        num_heads=num_heads
     ).to(device)
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))
 

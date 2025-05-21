@@ -56,12 +56,12 @@ def main():
     model = TinyLLM(
         vocab_size=len(tokenizer),
         block_size=train_dataset.block_size, 
-        embedding_size=64,
-        head_size=16
+        embedding_size=384,
+        num_heads=6
     ).to(device)
     
     # Create the optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
     # For tracking best model and metrics
     best_val_loss = float('inf')
