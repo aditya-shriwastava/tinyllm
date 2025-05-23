@@ -11,7 +11,7 @@ def sample(model, tokenizer, device, start_text='', num_tokens=100, temperature=
 
     generated = input_ids[0].tolist()
     for _ in tqdm(range(num_tokens), desc="Sampling", leave=False):
-        input_crop = input_ids[:, -model.block_size:]
+        input_crop = input_ids[:, -model.context_len:]
         logits, _ = model(input_crop)
         logits = logits[:, -1, :] / temperature
         probs = torch.softmax(logits, dim=-1)
@@ -27,6 +27,11 @@ def main():
     parser.add_argument('--prompt', type=str, default='', help='Initial text prompt')
     parser.add_argument('--tokens', type=int, default=200, help='Number of tokens to generate')
     parser.add_argument('--temperature', type=float, default=1.0, help='Sampling temperature')
+    parser.add_argument('--context-len', type=int, default=256, help='Context length (sequence length)')
+    parser.add_argument('--embedding-size', type=int, default=384, help='Embedding size')
+    parser.add_argument('--num-heads', type=int, default=6, help='Number of attention heads')
+    parser.add_argument('--num-layers', type=int, default=4, help='Number of transformer blocks')
+    parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
     args = parser.parse_args()
 
     # Load tokenizer from data
@@ -34,18 +39,16 @@ def main():
         data = f.read()
     tokenizer = Tokenizer(data=data)
 
-    # Model params (ensure these match training)
-    block_size = 256
-    embedding_size = 384
-    num_heads = 6
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load model
     model = TinyLLM(
         vocab_size=len(tokenizer),
-        block_size=block_size,
-        embedding_size=embedding_size,
-        num_heads=num_heads
+        context_len=args.context_len,
+        embedding_size=args.embedding_size,
+        num_heads=args.num_heads,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
     ).to(device)
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))
 

@@ -16,7 +16,26 @@ from tokenizer import Tokenizer
 def main():
     parser = argparse.ArgumentParser(description='Train TinyLLM model')
     parser.add_argument('--epochs', type=int, default=10, help='Number of epochs to train')
+    parser.add_argument('--context-len', type=int, default=256, help='Context length (sequence length)')
+    parser.add_argument('--embedding-size', type=int, default=384, help='Embedding size')
+    parser.add_argument('--num-heads', type=int, default=6, help='Number of attention heads')
+    parser.add_argument('--num-layers', type=int, default=4, help='Number of transformer blocks')
+    parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
+    parser.add_argument('--batch-size', type=int, default=512, help='Batch size')
+    parser.add_argument('--learning-rate', type=float, default=5e-4, help='Learning rate')
+    parser.add_argument('--train-ratio', type=float, default=0.9, help='Ratio of data to use for training')
+    parser.add_argument('--hparams-json', type=str, default=None, help='Path to JSON file with hyperparameters')
     args = parser.parse_args()
+
+    # If hparams-json is provided, load and update args
+    if args.hparams_json is not None:
+        with open(args.hparams_json, 'r') as f:
+            hparams_from_json = json.load(f)
+        for k, v in hparams_from_json.items():
+            # Only set attribute if not already overridden by CLI
+            if not hasattr(args, k) or getattr(args, k) == parser.get_default(k):
+                setattr(args, k, v)
+
     num_epochs = args.epochs
 
     # Set device
@@ -44,24 +63,34 @@ def main():
     with open('./tinyshakespeare.txt', 'r') as f:
         data = f.read()
     tokenizer = Tokenizer(data=data)
-    train_dataset, test_dataset = load_datasets(data, block_size=256, tokenizer=tokenizer, train_ratio=0.9)
+    train_dataset, test_dataset = load_datasets(data, context_len=args.context_len, tokenizer=tokenizer, train_ratio=args.train_ratio)
     print(f"Train dataset size: {len(train_dataset)}")
     print(f"Test dataset size: {len(test_dataset)}")
 
+    # Save hyperparameters to hparams.json
+    hparams = vars(args)
+    with open(os.path.join(run_dir, "hparams.json"), "w") as f:
+        json.dump(hparams, f, indent=2)
+
     # Create the dataloader
-    train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Create the model
     model = TinyLLM(
         vocab_size=len(tokenizer),
-        block_size=train_dataset.block_size, 
-        embedding_size=384,
-        num_heads=6
+        context_len=args.context_len, 
+        embedding_size=args.embedding_size,
+        num_heads=args.num_heads,
+        num_layers=args.num_layers,
+        dropout=args.dropout
     ).to(device)
+    num_params = sum(p.numel() for p in model.parameters())
+    num_params_million = num_params / 1e6
+    print(f"Number of parameters in TinyLLM: {num_params} ({num_params_million:.2f}M)")
     
     # Create the optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     # For tracking best model and metrics
     best_val_loss = float('inf')

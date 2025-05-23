@@ -1,0 +1,11 @@
+{
+    "epochs": 10,
+    "context_len": 256,
+    "embedding_size": 384,
+    "num_heads": 6,
+    "num_layers": 4,
+    "dropout": 0.1,
+    "batch_size": 512,
+    "learning_rate": 0.0005,
+    "train_ratio": 0.9
+} 
